@@ -155,7 +155,7 @@ API routes registered before `spa_router` take priority over the SPA catch-all.
 Because Axum renders the HTML, Vite never gets a chance to inject its preamble. You must call `config.hmr_scripts()` in your template and set `VITE_FRAMEWORK` so the crate knows which preamble to generate.
 
 > **If HMR is not working**, this is the most likely reason: you are rendering your own HTML but haven’t called `hmr_scripts()` in the template.
-
+> ⚠️ **Do not set `server.origin`** in your `vite.config`. Setting it causes Vite to rewrite CSS `url()` and asset paths as absolute root paths that omit your configured `base` prefix, producing 404s in development. HMR already works without it — use `server.hmr.host` / `server.hmr.port` if you need to control the WebSocket connection explicitly.
 ```rust
 // In your Axum handler:
 let config = ViteConfig::from_env(axum_vite::embedded_dir!("$CARGO_MANIFEST_DIR/dist"));
