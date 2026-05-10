@@ -59,7 +59,7 @@ macro_rules! embedded_dir {
 }
 
 /// Configuration for the Vite dev server proxy and asset serving.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ViteConfig {
     /// Port of the Vite dev server (default: 5173)
     pub dev_port: u16,
