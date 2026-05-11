@@ -272,6 +272,7 @@ impl ViteConfig {
     /// let home  = config.entry_assets_for("index.html");
     /// let admin = config.entry_assets_for("admin/index.html");
     /// ```
+    #[allow(unused)]
     pub fn entry_assets_for(&self, manifest_key: &str) -> EntryAssets {
         let base = self.prefix.trim_end_matches('/');
 
