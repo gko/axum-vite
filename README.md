@@ -229,10 +229,11 @@ release builds and falls back to source paths in dev:
 ```rust
 let config = ViteConfig {
     framework: Framework::React,
+    // dev_script defaults to "src/main.tsx"; override if your entry differs
     ..ViteConfig::from_env(embedded_dir!("$CARGO_MANIFEST_DIR/frontend/dist"))
 };
 // Resolves hashed paths from manifest in release; dev_script in dev.
-let entry = config.entry_assets("index.html", "src/main.tsx");
+let entry = config.entry_assets();
 // entry.script       → the <script src> value
 // entry.stylesheets  → Vec of <link href> values
 ```

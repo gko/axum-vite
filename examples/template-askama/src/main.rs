@@ -91,7 +91,7 @@ async fn main() {
             "$CARGO_MANIFEST_DIR/frontend/dist"
         ))
     };
-    let entry = config.entry_assets("index.html", "src/main.tsx");
+    let entry = config.entry_assets();
     let config = Arc::new(config);
 
     let static_prefix = format!("/{}", config.prefix.trim_matches('/'));

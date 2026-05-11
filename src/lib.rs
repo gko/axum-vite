@@ -88,6 +88,18 @@ pub struct ViteConfig {
     pub auto_start: bool,
     /// The frontend framework being used for HMR preamble generation
     pub framework: Framework,
+    /// Path to the JS/TS entry file relative to the Vite project root.
+    ///
+    /// Used as the `<script src>` in dev mode, where Vite serves source files
+    /// directly. Typical values: `"src/main.tsx"`, `"src/index.ts"`.
+    /// Defaults to `"src/main.tsx"`.
+    pub dev_script: String,
+    /// Key to look up in `dist/.vite/manifest.json` in production builds.
+    ///
+    /// For single-page apps this is `"index.html"` (the Vite default).
+    /// For multi-page apps use [`ViteConfig::entry_assets_for`] to pass a
+    /// different key per page while sharing the same config.
+    pub manifest_key: String,
     /// Path prefixes to exclude from static asset serving (release mode only).
     /// Paths starting with any of these strings will return a 404 instead of
     /// serving the file. Useful for protecting server-rendered templates that
@@ -111,6 +123,8 @@ impl Default for ViteConfig {
             dev_command: "npm run dev".to_string(),
             auto_start: false,
             framework: Framework::default(),
+            dev_script: "src/main.tsx".to_string(),
+            manifest_key: "index.html".to_string(),
             excluded_prefixes: Vec::new(),
             #[cfg(debug_assertions)]
             client: reqwest::Client::new(),
@@ -157,6 +171,10 @@ impl ViteConfig {
             dev_command,
             auto_start,
             framework,
+            dev_script: std::env::var("VITE_DEV_SCRIPT")
+                .unwrap_or_else(|_| "src/main.tsx".to_string()),
+            manifest_key: std::env::var("VITE_MANIFEST_KEY")
+                .unwrap_or_else(|_| "index.html".to_string()),
             excluded_prefixes: Vec::new(),
             #[cfg(debug_assertions)]
             client: reqwest::Client::new(),
@@ -204,10 +222,13 @@ impl ViteConfig {
 /// # Example
 ///
 /// ```rust,no_run
-/// use axum_vite::{ViteConfig, embedded_dir};
+/// use axum_vite::{ViteConfig, embedded_dir, frameworks::Framework};
 ///
-/// let config = ViteConfig::from_env(embedded_dir!("$CARGO_MANIFEST_DIR/frontend/dist"));
-/// let entry = config.entry_assets("index.html", "src/main.tsx");
+/// let config = ViteConfig {
+///     framework: Framework::React,
+///     ..ViteConfig::from_env(embedded_dir!("$CARGO_MANIFEST_DIR/frontend/dist"))
+/// };
+/// let entry = config.entry_assets();
 /// // entry.script  → "/static/src/main.tsx"           (dev)
 /// //               → "/static/assets/main-A1b2C3.js"  (release)
 /// // entry.stylesheets → []                            (dev)
@@ -222,25 +243,36 @@ pub struct EntryAssets {
 }
 
 impl ViteConfig {
-    /// Resolves the JS entry point and CSS paths for the given Vite manifest key.
+    /// Resolves the JS entry point and CSS paths using [`ViteConfig::manifest_key`]
+    /// and [`ViteConfig::dev_script`].
     ///
-    /// - `manifest_key`: the key in `dist/.vite/manifest.json` — typically
-    ///   `"index.html"` for single-page apps, or `"admin/index.html"` etc. for
-    ///   multi-page apps. Only used in release builds.
-    /// - `dev_script`: the path to the JS/TS entry file relative to the Vite
-    ///   project root, e.g. `"src/main.tsx"` or `"src/index.ts"`. This is the
-    ///   `src` attribute Vite serves directly in dev mode; it is **not** read
-    ///   from disk — specify it explicitly to avoid silent 404s.
+    /// In dev mode returns `dev_script` prefixed with [`ViteConfig::prefix`] and
+    /// an empty `stylesheets` vec — Vite injects CSS via the JS module at runtime.
+    /// In release mode reads `dist/.vite/manifest.json` from the embedded dir and
+    /// looks up `manifest_key`. If the manifest is missing or the key is not found
+    /// a warning is logged and the dev-mode fallback is returned.
     ///
-    /// In dev mode the manifest is not read; `dev_script` is returned verbatim
-    /// (with the configured prefix) and `stylesheets` is empty. In release mode
-    /// the manifest is read from the embedded dist directory. If the manifest is
-    /// missing or the key is not found, a warning is logged and the dev-mode
-    /// fallback is returned.
+    /// For multi-page apps with multiple entry points use [`entry_assets_for`](Self::entry_assets_for)
+    /// to pass a different manifest key while reusing the same config.
     ///
     /// Requires `build: { manifest: true }` in `vite.config` so Vite writes
     /// `dist/.vite/manifest.json` during `npm run build`.
-    pub fn entry_assets(&self, manifest_key: &str, dev_script: &str) -> EntryAssets {
+    pub fn entry_assets(&self) -> EntryAssets {
+        self.entry_assets_for(&self.manifest_key.clone())
+    }
+
+    /// Like [`entry_assets`](Self::entry_assets) but looks up `manifest_key` in
+    /// the manifest instead of [`ViteConfig::manifest_key`].
+    ///
+    /// Useful for multi-page apps where each page has its own Vite entry point:
+    ///
+    /// ```rust,no_run
+    /// # use axum_vite::{ViteConfig, embedded_dir};
+    /// # let config = ViteConfig::from_env(None);
+    /// let home  = config.entry_assets_for("index.html");
+    /// let admin = config.entry_assets_for("admin/index.html");
+    /// ```
+    pub fn entry_assets_for(&self, manifest_key: &str) -> EntryAssets {
         let base = self.prefix.trim_end_matches('/');
 
         #[cfg(not(debug_assertions))]
@@ -258,11 +290,11 @@ impl ViteConfig {
         }
 
         #[cfg(not(debug_assertions))]
-        let _ = (manifest_key, dev_script);
+        let _ = manifest_key;
 
         // Dev: Vite serves the entry file directly; CSS is injected by the JS module.
         EntryAssets {
-            script: format!("{base}/{dev_script}"),
+            script: format!("{base}/{}", self.dev_script),
             stylesheets: vec![],
         }
     }
@@ -1370,7 +1402,7 @@ mod tests {
     // -----------------------------------------------------------------------
 
     // In debug builds entry_assets must always return the dev-mode fallback
-    // regardless of what manifest_key is passed (manifest is never read).
+    // using the config's dev_script (manifest is never read in dev).
     #[cfg(debug_assertions)]
     #[test]
     fn entry_assets_dev_returns_dev_script() {
@@ -1378,8 +1410,8 @@ mod tests {
             prefix: "/static/".to_string(),
             ..Default::default()
         };
-        let entry = config.entry_assets("index.html", "src/main.tsx");
-        assert_eq!(entry.script, "/static/src/main.tsx");
+        let entry = config.entry_assets();
+        assert_eq!(entry.script, "/static/src/main.tsx"); // default dev_script
         assert!(
             entry.stylesheets.is_empty(),
             "dev mode must not return stylesheets"
@@ -1388,12 +1420,13 @@ mod tests {
 
     #[cfg(debug_assertions)]
     #[test]
-    fn entry_assets_dev_respects_custom_prefix() {
+    fn entry_assets_dev_respects_custom_dev_script() {
         let config = ViteConfig {
             prefix: "/assets/".to_string(),
+            dev_script: "src/index.ts".to_string(),
             ..Default::default()
         };
-        let entry = config.entry_assets("index.html", "src/index.ts");
+        let entry = config.entry_assets();
         assert_eq!(entry.script, "/assets/src/index.ts");
     }
 
@@ -1406,7 +1439,7 @@ mod tests {
             prefix: "/static/".to_string(),
             ..Default::default()
         };
-        let entry = config.entry_assets("index.html", "src/main.tsx");
+        let entry = config.entry_assets();
         assert!(
             !entry.script.contains("//"),
             "double-slash in script path: {}",
@@ -1456,7 +1489,10 @@ mod tests {
     fn entry_assets_from_manifest_key_not_found_returns_default() {
         let json = r#"{"index.html": {"file": "assets/main.js"}}"#;
         let entry = parse_manifest_for_test(json, "/static", "admin/index.html");
-        assert!(entry.script.is_empty(), "expected empty script on missing key");
+        assert!(
+            entry.script.is_empty(),
+            "expected empty script on missing key"
+        );
         assert!(entry.stylesheets.is_empty());
     }
 
@@ -1512,6 +1548,9 @@ mod tests {
             .filter_map(|s: &serde_json::Value| s.as_str())
             .map(|s| format!("{base}/{s}"))
             .collect();
-        EntryAssets { script, stylesheets }
+        EntryAssets {
+            script,
+            stylesheets,
+        }
     }
 }
