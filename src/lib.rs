@@ -207,7 +207,7 @@ impl ViteConfig {
 /// use axum_vite::{ViteConfig, embedded_dir};
 ///
 /// let config = ViteConfig::from_env(embedded_dir!("$CARGO_MANIFEST_DIR/frontend/dist"));
-/// let entry = config.entry_assets("index.html");
+/// let entry = config.entry_assets("index.html", "src/main.tsx");
 /// // entry.script  → "/static/src/main.tsx"           (dev)
 /// //               → "/static/assets/main-A1b2C3.js"  (release)
 /// // entry.stylesheets → []                            (dev)
@@ -224,18 +224,23 @@ pub struct EntryAssets {
 impl ViteConfig {
     /// Resolves the JS entry point and CSS paths for the given Vite manifest key.
     ///
-    /// `manifest_key` is the key used in `dist/.vite/manifest.json` — for a
-    /// standard single-page app this is `"index.html"`. For multi-page apps
-    /// pass the appropriate entry key (e.g. `"admin/index.html"`).
+    /// - `manifest_key`: the key in `dist/.vite/manifest.json` — typically
+    ///   `"index.html"` for single-page apps, or `"admin/index.html"` etc. for
+    ///   multi-page apps. Only used in release builds.
+    /// - `dev_script`: the path to the JS/TS entry file relative to the Vite
+    ///   project root, e.g. `"src/main.tsx"` or `"src/index.ts"`. This is the
+    ///   `src` attribute Vite serves directly in dev mode; it is **not** read
+    ///   from disk — specify it explicitly to avoid silent 404s.
     ///
-    /// In dev mode this always returns the source path without reading the
-    /// manifest. In release mode it reads the manifest embedded via
-    /// [`embedded_dir!`]. If the manifest is missing or the key is not found,
-    /// a warning is logged and the dev-mode fallback is returned.
+    /// In dev mode the manifest is not read; `dev_script` is returned verbatim
+    /// (with the configured prefix) and `stylesheets` is empty. In release mode
+    /// the manifest is read from the embedded dist directory. If the manifest is
+    /// missing or the key is not found, a warning is logged and the dev-mode
+    /// fallback is returned.
     ///
     /// Requires `build: { manifest: true }` in `vite.config` so Vite writes
     /// `dist/.vite/manifest.json` during `npm run build`.
-    pub fn entry_assets(&self, manifest_key: &str) -> EntryAssets {
+    pub fn entry_assets(&self, manifest_key: &str, dev_script: &str) -> EntryAssets {
         let base = self.prefix.trim_end_matches('/');
 
         #[cfg(not(debug_assertions))]
@@ -252,12 +257,12 @@ impl ViteConfig {
             );
         }
 
-        #[cfg(debug_assertions)]
-        let _ = manifest_key;
+        #[cfg(not(debug_assertions))]
+        let _ = (manifest_key, dev_script);
 
-        // Dev fallback: Vite serves source files directly.
+        // Dev: Vite serves the entry file directly; CSS is injected by the JS module.
         EntryAssets {
-            script: format!("{base}/src/main.tsx"),
+            script: format!("{base}/{dev_script}"),
             stylesheets: vec![],
         }
     }
@@ -1358,5 +1363,155 @@ mod tests {
             let result: Option<&'static Dir<'static>> = embedded_dir!("$CARGO_MANIFEST_DIR");
             assert!(result.is_none());
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // EntryAssets / entry_assets()
+    // -----------------------------------------------------------------------
+
+    // In debug builds entry_assets must always return the dev-mode fallback
+    // regardless of what manifest_key is passed (manifest is never read).
+    #[cfg(debug_assertions)]
+    #[test]
+    fn entry_assets_dev_returns_dev_script() {
+        let config = ViteConfig {
+            prefix: "/static/".to_string(),
+            ..Default::default()
+        };
+        let entry = config.entry_assets("index.html", "src/main.tsx");
+        assert_eq!(entry.script, "/static/src/main.tsx");
+        assert!(
+            entry.stylesheets.is_empty(),
+            "dev mode must not return stylesheets"
+        );
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn entry_assets_dev_respects_custom_prefix() {
+        let config = ViteConfig {
+            prefix: "/assets/".to_string(),
+            ..Default::default()
+        };
+        let entry = config.entry_assets("index.html", "src/index.ts");
+        assert_eq!(entry.script, "/assets/src/index.ts");
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn entry_assets_dev_trims_trailing_slash_in_prefix() {
+        // prefix is stored as "/static/" — the trailing slash must not produce
+        // a double-slash like "/static//src/main.tsx".
+        let config = ViteConfig {
+            prefix: "/static/".to_string(),
+            ..Default::default()
+        };
+        let entry = config.entry_assets("index.html", "src/main.tsx");
+        assert!(
+            !entry.script.contains("//"),
+            "double-slash in script path: {}",
+            entry.script
+        );
+    }
+
+    // from_manifest is only compiled in release — test it directly via a helper
+    // that mirrors the same logic so we can exercise it in debug test runs too.
+    #[test]
+    fn entry_assets_from_manifest_happy_path() {
+        let json = r#"{
+            "index.html": {
+                "file": "assets/main-A1b2C3.js",
+                "css": ["assets/index-B2c3D4.css"]
+            }
+        }"#;
+        let entry = parse_manifest_for_test(json, "/static", "index.html");
+        assert_eq!(entry.script, "/static/assets/main-A1b2C3.js");
+        assert_eq!(entry.stylesheets, vec!["/static/assets/index-B2c3D4.css"]);
+    }
+
+    #[test]
+    fn entry_assets_from_manifest_multiple_css() {
+        let json = r#"{
+            "index.html": {
+                "file": "assets/main.js",
+                "css": ["assets/a.css", "assets/b.css"]
+            }
+        }"#;
+        let entry = parse_manifest_for_test(json, "/s", "index.html");
+        assert_eq!(entry.stylesheets.len(), 2);
+        assert_eq!(entry.stylesheets[0], "/s/assets/a.css");
+        assert_eq!(entry.stylesheets[1], "/s/assets/b.css");
+    }
+
+    #[test]
+    fn entry_assets_from_manifest_no_css_key() {
+        // Vite omits "css" when there are no stylesheets for the entry.
+        let json = r#"{"index.html": {"file": "assets/main.js"}}"#;
+        let entry = parse_manifest_for_test(json, "/static", "index.html");
+        assert_eq!(entry.script, "/static/assets/main.js");
+        assert!(entry.stylesheets.is_empty());
+    }
+
+    #[test]
+    fn entry_assets_from_manifest_key_not_found_returns_default() {
+        let json = r#"{"index.html": {"file": "assets/main.js"}}"#;
+        let entry = parse_manifest_for_test(json, "/static", "admin/index.html");
+        assert!(entry.script.is_empty(), "expected empty script on missing key");
+        assert!(entry.stylesheets.is_empty());
+    }
+
+    #[test]
+    fn entry_assets_from_manifest_invalid_json_returns_default() {
+        let entry = parse_manifest_for_test("not json at all {{{", "/static", "index.html");
+        assert!(entry.script.is_empty());
+        assert!(entry.stylesheets.is_empty());
+    }
+
+    #[test]
+    fn entry_assets_from_manifest_prefix_no_trailing_slash() {
+        // Verify the helper strips trailing slash from base the same way
+        // entry_assets() does.
+        let json = r#"{"index.html": {"file": "assets/main.js", "css": ["assets/a.css"]}}"#;
+        let entry = parse_manifest_for_test(json, "/static/", "index.html");
+        assert!(
+            !entry.script.contains("//"),
+            "double-slash in script: {}",
+            entry.script
+        );
+        assert!(
+            !entry.stylesheets[0].contains("//"),
+            "double-slash in css: {}",
+            entry.stylesheets[0]
+        );
+    }
+
+    /// Mirror of `EntryAssets::from_manifest` that is always compiled (not
+    /// gated on `#[cfg(not(debug_assertions))]`) so the manifest-parsing logic
+    /// can be unit-tested in both debug and release runs.
+    fn parse_manifest_for_test(json: &str, base: &str, key: &str) -> EntryAssets {
+        let base = base.trim_end_matches('/');
+        let Ok(manifest) = serde_json::from_str::<serde_json::Value>(json) else {
+            return EntryAssets::default();
+        };
+        let Some(entries) = manifest.as_object() else {
+            return EntryAssets::default();
+        };
+        let Some(entry) = entries.get(key) else {
+            return EntryAssets::default();
+        };
+        let script = entry
+            .get("file")
+            .and_then(|f: &serde_json::Value| f.as_str())
+            .map(|f| format!("{base}/{f}"))
+            .unwrap_or_default();
+        let stylesheets = entry
+            .get("css")
+            .and_then(|c: &serde_json::Value| c.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|s: &serde_json::Value| s.as_str())
+            .map(|s| format!("{base}/{s}"))
+            .collect();
+        EntryAssets { script, stylesheets }
     }
 }

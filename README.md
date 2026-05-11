@@ -231,8 +231,8 @@ let config = ViteConfig {
     framework: Framework::React,
     ..ViteConfig::from_env(embedded_dir!("$CARGO_MANIFEST_DIR/frontend/dist"))
 };
-// Resolves hashed paths from manifest in release; src/main.tsx in dev.
-let entry = config.entry_assets("index.html");
+// Resolves hashed paths from manifest in release; dev_script in dev.
+let entry = config.entry_assets("index.html", "src/main.tsx");
 // entry.script       → the <script src> value
 // entry.stylesheets  → Vec of <link href> values
 ```
