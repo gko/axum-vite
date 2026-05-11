@@ -12,6 +12,15 @@ categories = [
     "web-programming::http-server",
     "development-tools"
 ]
+exclude = [
+    "examples/basic-spa/*"
+    "examples/template-askama/*"
+]
+
+[workspace]
+members = [
+    "examples/basic-spa", "examples/template-askama",
+]
 
 [dependencies]
 axum = { version = "0.8.9" }

@@ -32,7 +32,7 @@ cd examples/frontend
 npm install && npm run dev
 
 # Terminal 2 — start the backend (proxies frontend → Vite)
-cargo run --example basic
+cargo run -p basic-spa
 ```
 
 Then open <http://localhost:3000>.
