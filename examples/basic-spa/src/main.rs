@@ -37,7 +37,7 @@ async fn main() {
     // embedded_dir! embeds the dist folder at compile time in release builds
     // and returns None in debug builds — no #[cfg] boilerplate required.
     let config = ViteConfig::from_env(axum_vite::embedded_dir!(
-        "$CARGO_MANIFEST_DIR/examples/frontend/dist"
+        "$CARGO_MANIFEST_DIR/frontend/dist"
     ));
 
     // Optional: automatically start the Vite dev server (dev mode only).
