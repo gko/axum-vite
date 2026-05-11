@@ -5,8 +5,8 @@
 //!   - **Dev**: proxying `/static/…` to the Vite dev server + HMR preamble via `hmr_scripts()`.
 //!   - **Prod**: serving embedded, content-hashed assets directly from the binary.
 //!
-//! **Production JS/CSS paths** come from `dist/.vite/manifest.json`. `EntryAssets::from_config`
-//! reads the manifest at startup — no runtime file I/O, the JSON is embedded in the binary.
+//! **Production JS/CSS paths** come from `dist/.vite/manifest.json`, read via
+//! `config.entry_assets("index.html")` — no runtime file I/O, the JSON is embedded in the binary.
 //!
 //! ```sh
 //! # Terminal 1 — Vite dev server
@@ -27,7 +27,7 @@ use std::sync::Arc;
 
 use askama::Template;
 use axum::{Router, extract::State, response::Html, routing::get};
-use axum_vite::{ViteConfig, frameworks::Framework, router as asset_router};
+use axum_vite::{EntryAssets, ViteConfig, frameworks::Framework, router as asset_router};
 use tokio::net::TcpListener;
 
 // ── App state ────────────────────────────────────────────────────────────────
@@ -37,83 +37,6 @@ struct AppState {
     vite: Arc<ViteConfig>,
     /// Resolved once at startup: hashed paths in prod, source paths in dev.
     entry: EntryAssets,
-}
-
-/// Hashed asset paths for the JS entry point, resolved once at startup.
-///
-/// In **dev** `script` points at the unbuilt source file — Vite transforms it
-/// on the fly. `stylesheets` is empty because Vite injects CSS via the JS
-/// module itself in dev mode; no separate `<link>` tag is needed.
-///
-/// In **production** both come from `dist/.vite/manifest.json` and include
-/// the content hash (e.g. `assets/main-A1b2C3.js`).
-#[derive(Clone, Default)]
-struct EntryAssets {
-    /// `src` attribute for the `<script type="module">` tag.
-    script: String,
-    /// `href` attributes for any `<link rel="stylesheet">` tags.
-    stylesheets: Vec<String>,
-}
-
-impl EntryAssets {
-    fn from_config(config: &ViteConfig) -> Self {
-        let base = config.prefix.trim_end_matches('/');
-
-        // `config.dir` is `Some` only in release builds (set by `embedded_dir!`).
-        // In dev it's `None`, so the manifest branch is naturally skipped.
-        if let Some(dir) = config.dir {
-            if let Some(file) = dir.get_file(".vite/manifest.json") {
-                if let Some(json) = file.contents_utf8() {
-                    return Self::from_manifest(json, base);
-                }
-            }
-        }
-
-        // Dev: Vite serves `src/main.tsx` directly; CSS is injected by the JS module.
-        Self {
-            script: format!("{base}/src/main.tsx"),
-            stylesheets: vec![],
-        }
-    }
-
-    /// Parses `dist/.vite/manifest.json` and returns the hashed paths for the
-    /// main entry point.
-    ///
-    /// Looks up `"index.html"` in the manifest — the key Vite uses for the
-    /// root entry point. For multi-page apps with several entry points, call
-    /// this once per entry (e.g. `from_manifest(json, base, "admin/index.html")`).
-    fn from_manifest(json: &str, base: &str) -> Self {
-        let Ok(manifest) = serde_json::from_str::<serde_json::Value>(json) else {
-            return Self::default();
-        };
-        let Some(entries) = manifest.as_object() else {
-            return Self::default();
-        };
-
-        let Some(entry) = entries.get("index.html") else {
-            return Self::default();
-        };
-
-        let script = entry
-            .get("file")
-            .and_then(|f| f.as_str())
-            .map(|f| format!("{base}/{f}"))
-            .unwrap_or_default();
-
-        let stylesheets = entry
-            .get("css")
-            .and_then(|c| c.as_array())
-            .into_iter()
-            .flatten()
-            .filter_map(|s| s.as_str())
-            .map(|s| format!("{base}/{s}"))
-            .collect();
-
-        Self {
-            script,
-            stylesheets,
-        }
-    }
 }
 
 // ── Templates ────────────────────────────────────────────────────────────────
@@ -168,7 +91,7 @@ async fn main() {
             "$CARGO_MANIFEST_DIR/frontend/dist"
         ))
     };
-    let entry = EntryAssets::from_config(&config);
+    let entry = config.entry_assets("index.html");
     let config = Arc::new(config);
 
     let static_prefix = format!("/{}", config.prefix.trim_matches('/'));
