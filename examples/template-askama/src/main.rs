@@ -27,7 +27,7 @@ use std::sync::Arc;
 
 use askama::Template;
 use axum::{Router, extract::State, response::Html, routing::get};
-use axum_vite::{ViteConfig, router as asset_router};
+use axum_vite::{ViteConfig, frameworks::Framework, router as asset_router};
 use tokio::net::TcpListener;
 
 // ── App state ────────────────────────────────────────────────────────────────
@@ -159,9 +159,12 @@ async fn about(State(state): State<AppState>) -> Html<String> {
 async fn main() {
     env_logger::init();
 
-    let config = ViteConfig::from_env(axum_vite::embedded_dir!(
-        "$CARGO_MANIFEST_DIR/frontend/dist"
-    ));
+    let config = ViteConfig {
+        framework: Framework::React,
+        ..ViteConfig::from_env(axum_vite::embedded_dir!(
+            "$CARGO_MANIFEST_DIR/frontend/dist"
+        ))
+    };
     let entry = EntryAssets::from_config(&config);
     let config = Arc::new(config);
 
