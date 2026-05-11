@@ -243,6 +243,7 @@ let entry = config.entry_assets();
 > in ways that break the prefix, producing 404s in dev. Use `server.hmr.host` / `server.hmr.port`
 > if you need explicit WebSocket control.
 
+> [!TIP]
 > **If HMR is not working**, the most likely reason is that `hmr_scripts()` is missing from the
 > template `<head>`.
 ## Known Limitations
