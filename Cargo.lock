@@ -189,6 +189,7 @@ dependencies = [
  "log",
  "mime_guess",
  "reqwest",
+ "serde_json",
  "tokio",
  "tower",
 ]
@@ -1458,7 +1459,6 @@ dependencies = [
  "env_logger",
  "include_dir",
  "log",
- "serde_json",
  "tokio",
 ]
 

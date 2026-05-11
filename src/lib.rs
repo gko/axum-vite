@@ -191,6 +191,120 @@ impl ViteConfig {
     }
 }
 
+/// Resolved asset paths for the JS entry point of a Vite project.
+///
+/// In **dev** mode, `script` points at the raw source file (`src/main.tsx`)
+/// and `stylesheets` is empty — Vite injects CSS via the JS module at runtime.
+///
+/// In **production**, both are read from `dist/.vite/manifest.json` and carry
+/// the content hash (e.g. `assets/main-A1b2C3.js`).
+///
+/// Obtain an instance via [`ViteConfig::entry_assets`].
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use axum_vite::{ViteConfig, embedded_dir};
+///
+/// let config = ViteConfig::from_env(embedded_dir!("$CARGO_MANIFEST_DIR/frontend/dist"));
+/// let entry = config.entry_assets("index.html");
+/// // entry.script  → "/static/src/main.tsx"           (dev)
+/// //               → "/static/assets/main-A1b2C3.js"  (release)
+/// // entry.stylesheets → []                            (dev)
+/// //                   → ["/static/assets/index-B2c3.css"] (release)
+/// ```
+#[derive(Clone, Default, Debug)]
+pub struct EntryAssets {
+    /// Value for `<script type="module" src="…">`.
+    pub script: String,
+    /// Values for `<link rel="stylesheet" href="…">` tags.
+    pub stylesheets: Vec<String>,
+}
+
+impl ViteConfig {
+    /// Resolves the JS entry point and CSS paths for the given Vite manifest key.
+    ///
+    /// `manifest_key` is the key used in `dist/.vite/manifest.json` — for a
+    /// standard single-page app this is `"index.html"`. For multi-page apps
+    /// pass the appropriate entry key (e.g. `"admin/index.html"`).
+    ///
+    /// In dev mode this always returns the source path without reading the
+    /// manifest. In release mode it reads the manifest embedded via
+    /// [`embedded_dir!`]. If the manifest is missing or the key is not found,
+    /// a warning is logged and the dev-mode fallback is returned.
+    ///
+    /// Requires `build: { manifest: true }` in `vite.config` so Vite writes
+    /// `dist/.vite/manifest.json` during `npm run build`.
+    pub fn entry_assets(&self, manifest_key: &str) -> EntryAssets {
+        let base = self.prefix.trim_end_matches('/');
+
+        #[cfg(not(debug_assertions))]
+        if let Some(dir) = self.dir {
+            if let Some(file) = dir.get_file(".vite/manifest.json") {
+                if let Some(json) = file.contents_utf8() {
+                    return EntryAssets::from_manifest(json, base, manifest_key);
+                }
+            }
+            warn!(
+                "[axum-vite] entry_assets: dist/.vite/manifest.json not found in embedded dir. \
+                 Add `build: {{ manifest: true }}` to vite.config and rebuild the frontend. \
+                 Falling back to dev-mode paths — assets will 404 in production."
+            );
+        }
+
+        #[cfg(debug_assertions)]
+        let _ = manifest_key;
+
+        // Dev fallback: Vite serves source files directly.
+        EntryAssets {
+            script: format!("{base}/src/main.tsx"),
+            stylesheets: vec![],
+        }
+    }
+}
+
+impl EntryAssets {
+    #[cfg(not(debug_assertions))]
+    fn from_manifest(json: &str, base: &str, key: &str) -> Self {
+        let Ok(manifest) = serde_json::from_str::<serde_json::Value>(json) else {
+            warn!("[axum-vite] entry_assets: failed to parse manifest.json as JSON");
+            return Self::default();
+        };
+        let Some(entries) = manifest.as_object() else {
+            return Self::default();
+        };
+        let Some(entry) = entries.get(key) else {
+            warn!(
+                "[axum-vite] entry_assets: key {:?} not found in manifest.json. \
+                 Available keys: {}",
+                key,
+                entries.keys().cloned().collect::<Vec<_>>().join(", ")
+            );
+            return Self::default();
+        };
+
+        let script = entry
+            .get("file")
+            .and_then(|f: &serde_json::Value| f.as_str())
+            .map(|f| format!("{base}/{f}"))
+            .unwrap_or_default();
+
+        let stylesheets = entry
+            .get("css")
+            .and_then(|c: &serde_json::Value| c.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|s: &serde_json::Value| s.as_str())
+            .map(|s| format!("{base}/{s}"))
+            .collect();
+
+        Self {
+            script,
+            stylesheets,
+        }
+    }
+}
+
 /// A handle to a running Vite dev server child process.
 ///
 /// Dropping this handle **kills the child process**, preventing orphaned Node

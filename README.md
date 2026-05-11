@@ -221,11 +221,21 @@ let app = Router::new()
 
 Set `VITE_FRAMEWORK=react` (or `vue` / `svelte`) so the correct HMR preamble is generated.
 
-**Production `<script>` and `<link>` paths**: Vite content-hashes JS/CSS filenames in production
-(`assets/main-A1b2C3.js`). The correct paths come from `dist/.vite/manifest.json`. The
-[`template-askama`](examples/template-askama/) example includes a minimal manifest reader
-(`EntryAssets::from_config`) that resolves these at startup with no runtime I/O — the
-manifest JSON is embedded in the binary alongside the other assets.
+**Production `<script>` and `<link>` paths**: Vite content-hashes JS/CSS filenames in
+production (`assets/main-A1b2C3.js`). The correct paths come from `dist/.vite/manifest.json`.
+Call `config.entry_assets("index.html")` once at startup — it reads the embedded manifest in
+release builds and falls back to source paths in dev:
+
+```rust
+let config = ViteConfig {
+    framework: Framework::React,
+    ..ViteConfig::from_env(embedded_dir!("$CARGO_MANIFEST_DIR/frontend/dist"))
+};
+// Resolves hashed paths from manifest in release; src/main.tsx in dev.
+let entry = config.entry_assets("index.html");
+// entry.script       → the <script src> value
+// entry.stylesheets  → Vec of <link href> values
+```
 
 > [!WARNING]
 > **Do not set `server.origin`** in `vite.config`. It causes Vite to rewrite asset paths
