@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}About{% endblock %}
+
+{% block body %}
+<nav style="font-family: sans-serif; padding: 1rem; border-bottom: 1px solid #eee">
+    <a href="/" style="margin-right: 1rem">Home</a>
+    <a href="/about">About</a>
+</nav>
+
+<main style="font-family: sans-serif; padding: 2rem; max-width: 600px">
+    <h1>About</h1>
+    <p>This page is fully server-rendered by Askama. No React here.</p>
+    <p>The JS entry point is suppressed by overriding the <code>scripts</code> block below.</p>
+</main>
+{% endblock %}
+
+{# Suppress the <script> tag — no JS needed on this page. #}
+{% block scripts %}{% endblock %}

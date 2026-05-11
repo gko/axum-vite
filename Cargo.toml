@@ -13,7 +13,7 @@ categories = [
     "development-tools"
 ]
 exclude = [
-    "examples/basic-spa/*"
+    "examples/basic-spa/*",
     "examples/template-askama/*"
 ]
 

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>{% block title %}{% endblock %} — Axum + Vite</title>
+
+    {% for href in entry.stylesheets %}
+        <link rel="stylesheet" href="{{ href }}" />
+    {% endfor %}
+
+    {% block head %}{% endblock %}
+
+    {# HMR preamble: non-empty in dev builds, empty string in production. #}
+    {{ hmr_scripts|safe }}
+  </head>
+  <body>
+    {% block body %}{% endblock %}
+
+    {# JS entry point. Override this block to suppress the script on pages that don't need it. #}
+    {% block scripts %}
+        <script type="module" src="{{ entry.script }}"></script>
+    {% endblock %}
+  </body>
+</html>

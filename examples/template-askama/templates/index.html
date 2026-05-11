@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block body %}
+<nav style="font-family: sans-serif; padding: 1rem; border-bottom: 1px solid #eee">
+    <a href="/" style="margin-right: 1rem">Home</a>
+    <a href="/about">About</a>
+</nav>
+
+{# React mounts here. main.tsx guards against a missing #root, so pages that #}
+{# omit this div (like about.html) won't throw. #}
+<div id="root"></div>
+{% endblock %}
