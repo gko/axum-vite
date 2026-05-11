@@ -7,5 +7,5 @@ export default defineConfig({
   // base must match ViteConfig::prefix. The crate default is "/static/" and
   // this example uses that default, so no VITE_STATIC_PREFIX env var is needed.
   // If you change this, set VITE_STATIC_PREFIX to the same value.
-  base: '/static/',
+  base: '/static/'
 })

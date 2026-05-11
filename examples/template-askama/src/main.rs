@@ -109,14 +109,17 @@ impl EntryAssets {
             .map(|s| format!("{base}/{s}"))
             .collect();
 
-        Self { script, stylesheets }
+        Self {
+            script,
+            stylesheets,
+        }
     }
 }
 
 // ── Templates ────────────────────────────────────────────────────────────────
 
 #[derive(Template)]
-#[template(path = "index.html")]
+#[template(path = "home.html")]
 struct IndexPage {
     hmr_scripts: String,
     entry: EntryAssets,
