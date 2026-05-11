@@ -206,6 +206,7 @@ dependencies = [
  "axum",
  "axum-vite",
  "env_logger",
+ "include_dir",
  "log",
  "tokio",
 ]
@@ -1455,6 +1456,7 @@ dependencies = [
  "axum",
  "axum-vite",
  "env_logger",
+ "include_dir",
  "log",
  "serde_json",
  "tokio",

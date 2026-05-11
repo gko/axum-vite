@@ -69,6 +69,7 @@ Then open <http://localhost:3000>. The `/about` route is fully server-rendered w
 ```toml
 [dependencies]
 axum-vite = "0.1.0"
+include_dir = "0.7"  # required by embedded_dir! in release builds
 ```
 
 ### Wire up the router
@@ -152,7 +153,7 @@ RUST_LOG=axum_vite=warn cargo run
 ## Workflow
 
 1. **Development**: Run your Rust server. It proxies frontend to Vite. You get instant HMR.
-2. **Build**: Run `npm run build` inside your frontend directory to generate `dist/`. This must happen **before** `cargo build --release` — the macro captures the folder contents at compile time.
+2. **Build**: Run `npm run build` inside your frontend directory to generate `dist/`. This must happen **before** `cargo build --release` — the macro captures the folder contents at compile time. If you use Option B (template engine), also set `build: { manifest: true }` in `vite.config` so `dist/.vite/manifest.json` is generated for production asset path resolution.
 3. **Production**: Pass `axum_vite::embedded_dir!("$CARGO_MANIFEST_DIR/dist")` to `ViteConfig::from_env` — the macro embeds `dist/` into the binary at compile time and the crate automatically switches from proxying to serving those files. Run `cargo build --release`; the resulting binary is self-contained with no separate web server or `dist/` folder needed at runtime.
 
 ## Serving HTML
