@@ -115,6 +115,8 @@ You can configure the crate via `ViteConfig` or environment variables:
 | `auto_start` | `VITE_AUTO_START` | `false` | Whether to spawn Vite on startup. |
 | `framework` | `VITE_FRAMEWORK` | `none` | Frontend framework for HMR preamble (`react`, `vue`, `svelte`). |
 | `dev_host` | `VITE_DEV_HOST` | `localhost` | Hostname of the Vite dev server. |
+| `dev_script` | `VITE_DEV_SCRIPT` | `src/main.tsx` | Source path served in dev mode by `entry_assets()`. |
+| `manifest_key` | `VITE_MANIFEST_KEY` | `index.html` | Manifest key looked up in production by `entry_assets()`. |
 
 All fields are public, so you can construct `ViteConfig` directly instead of using `from_env` — useful when you want compile-time config or don't want environment variables involved:
 
