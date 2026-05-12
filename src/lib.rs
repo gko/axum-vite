@@ -258,22 +258,33 @@ impl ViteConfig {
     /// Requires `build: { manifest: true }` in `vite.config` so Vite writes
     /// `dist/.vite/manifest.json` during `npm run build`.
     pub fn entry_assets(&self) -> EntryAssets {
-        self.entry_assets_for(&self.manifest_key.clone())
+        self.entry_assets_for(&self.manifest_key.clone(), &self.dev_script.clone())
     }
 
-    /// Like [`entry_assets`](Self::entry_assets) but looks up `manifest_key` in
-    /// the manifest instead of [`ViteConfig::manifest_key`].
+    /// Like [`entry_assets`](Self::entry_assets) but explicitly specifies both the
+    /// manifest key (used in production) and the dev script path (used in dev mode).
     ///
-    /// Useful for multi-page apps where each page has its own Vite entry point:
+    /// Use this for **secondary entry points** in multi-page apps where the manifest
+    /// key (an HTML file) differs from the dev-mode source path:
     ///
     /// ```rust,no_run
     /// # use axum_vite::{ViteConfig, embedded_dir};
     /// # let config = ViteConfig::from_env(None);
-    /// let home  = config.entry_assets_for("index.html");
-    /// let admin = config.entry_assets_for("admin/index.html");
+    /// // Primary entry: convenience wrapper uses ViteConfig fields
+    /// let home = config.entry_assets();
+    ///
+    /// // Secondary entry: supply manifest key + dev source path explicitly
+    /// let editor = config.entry_assets_for(
+    ///     "templates/components/editor.html",  // manifest key (prod)
+    ///     "src/features/PostEditor/editor.tsx", // dev script path
+    /// );
     /// ```
+    ///
+    /// In dev mode `dev_script` is prepended with [`ViteConfig::prefix`] and
+    /// returned directly — the manifest key is ignored. In production the
+    /// manifest key is looked up in `dist/.vite/manifest.json`.
     #[allow(unused)]
-    pub fn entry_assets_for(&self, manifest_key: &str) -> EntryAssets {
+    pub fn entry_assets_for(&self, manifest_key: &str, dev_script: &str) -> EntryAssets {
         let base = self.prefix.trim_end_matches('/');
 
         #[cfg(not(debug_assertions))]
@@ -295,7 +306,7 @@ impl ViteConfig {
 
         // Dev: Vite serves the entry file directly; CSS is injected by the JS module.
         EntryAssets {
-            script: format!("{base}/{}", self.dev_script),
+            script: format!("{base}/{}", dev_script),
             stylesheets: vec![],
         }
     }
@@ -1431,6 +1442,41 @@ mod tests {
         assert_eq!(entry.script, "/assets/src/index.ts");
     }
 
+    // entry_assets_for must use the caller-supplied dev_script, not self.dev_script.
+    // This is the key invariant for secondary MPA entries (e.g. editor.tsx).
+    #[cfg(debug_assertions)]
+    #[test]
+    fn entry_assets_for_dev_uses_explicit_dev_script() {
+        let config = ViteConfig {
+            prefix: "/static/".to_string(),
+            dev_script: "src/main.tsx".to_string(), // primary entry — must not bleed through
+            ..Default::default()
+        };
+        let entry = config.entry_assets_for(
+            "templates/components/editor.html", // manifest key (ignored in dev)
+            "src/features/PostEditor/editor.tsx",
+        );
+        assert_eq!(entry.script, "/static/src/features/PostEditor/editor.tsx");
+        assert!(entry.stylesheets.is_empty());
+    }
+
+    // entry_assets() is still sugar for entry_assets_for(manifest_key, dev_script).
+    #[cfg(debug_assertions)]
+    #[test]
+    fn entry_assets_delegates_to_entry_assets_for() {
+        let config = ViteConfig {
+            prefix: "/static/".to_string(),
+            dev_script: "src/app.ts".to_string(),
+            manifest_key: "index.html".to_string(),
+            ..Default::default()
+        };
+        let via_shortcut = config.entry_assets();
+        let via_explicit =
+            config.entry_assets_for(&config.manifest_key.clone(), &config.dev_script.clone());
+        assert_eq!(via_shortcut.script, via_explicit.script);
+        assert_eq!(via_shortcut.stylesheets, via_explicit.stylesheets);
+    }
+
     #[cfg(debug_assertions)]
     #[test]
     fn entry_assets_dev_trims_trailing_slash_in_prefix() {
@@ -1450,6 +1496,30 @@ mod tests {
 
     // from_manifest is only compiled in release — test it directly via a helper
     // that mirrors the same logic so we can exercise it in debug test runs too.
+    #[test]
+    fn entry_assets_from_manifest_secondary_entry_no_css() {
+        // Real-world pattern: an HTML entry that only produces a JS chunk (no CSS).
+        let json = r#"{
+            "index.html": {
+                "file": "assets/main-A1b2C3.js",
+                "css": ["assets/index-B2c3D4.css"]
+            },
+            "templates/components/editor.html": {
+                "file": "assets/templates/components/editor-oW_rDizN.js"
+            }
+        }"#;
+        let entry =
+            parse_manifest_for_test(json, "/static", "templates/components/editor.html");
+        assert_eq!(
+            entry.script,
+            "/static/assets/templates/components/editor-oW_rDizN.js"
+        );
+        assert!(
+            entry.stylesheets.is_empty(),
+            "secondary entry has no CSS chunk"
+        );
+    }
+
     #[test]
     fn entry_assets_from_manifest_happy_path() {
         let json = r#"{
