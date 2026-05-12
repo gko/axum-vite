@@ -301,7 +301,7 @@ impl ViteConfig {
             );
         }
 
-        #[cfg(not(debug_assertions))]
+        #[cfg(debug_assertions)]
         let _ = manifest_key;
 
         // Dev: Vite serves the entry file directly; CSS is injected by the JS module.
