@@ -258,7 +258,7 @@ impl ViteConfig {
     /// Requires `build: { manifest: true }` in `vite.config` so Vite writes
     /// `dist/.vite/manifest.json` during `npm run build`.
     pub fn entry_assets(&self) -> EntryAssets {
-        self.entry_assets_for(&self.manifest_key.clone(), &self.dev_script.clone())
+        self.entry_assets_for(&self.manifest_key, &self.dev_script)
     }
 
     /// Like [`entry_assets`](Self::entry_assets) but explicitly specifies both the
