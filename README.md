@@ -158,6 +158,27 @@ RUST_LOG=axum_vite=warn cargo run
 2. **Build**: Run `npm run build` inside your frontend directory to generate `dist/`. This must happen **before** `cargo build --release` — the macro captures the folder contents at compile time. If you use Option B (template engine), also set `build: { manifest: true }` in `vite.config` so `dist/.vite/manifest.json` is generated for production asset path resolution.
 3. **Production**: Pass `axum_vite::embedded_dir!("$CARGO_MANIFEST_DIR/dist")` to `ViteConfig::from_env` — the macro embeds `dist/` into the binary at compile time and the crate automatically switches from proxying to serving those files. Run `cargo build --release`; the resulting binary is self-contained with no separate web server or `dist/` folder needed at runtime.
 
+### Automating the frontend build
+
+If you want `cargo build --release` to run `npm run build` automatically, add a `build.rs` to the same crate that calls `embedded_dir!`:
+
+```rust
+// build.rs
+fn main() {
+    if std::env::var("PROFILE").as_deref() == Ok("release") {
+        println!("cargo:rerun-if-changed=frontend/src");
+        let status = std::process::Command::new("npm")
+            .args(["run", "build"])
+            .current_dir("frontend")
+            .status()
+            .expect("npm run build failed");
+        assert!(status.success(), "npm run build exited with {status}");
+    }
+}
+```
+
+Adjust `"frontend"` and the `rerun-if-changed` path to match your layout. This is not built into the crate because your project may use `bun`, `deno`, or `pnpm`; you may want to skip it in CI; and installing dependencies before the build runs is your responsibility.
+
 ## Serving HTML
 
 There are two approaches depending on who generates your HTML:
