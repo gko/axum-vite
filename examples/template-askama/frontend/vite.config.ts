@@ -1,3 +1,4 @@
+import { resolve } from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -12,5 +13,16 @@ export default defineConfig({
     // Generate dist/.vite/manifest.json so the Rust binary can resolve
     // content-hashed asset paths at startup via EntryAssets::from_config.
     manifest: true,
+    rollupOptions: {
+      input: {
+        // Primary SPA entry — used by home.html and any page that needs the
+        // full React app.
+        main: resolve(__dirname, 'index.html'),
+        // Secondary entry — loaded only on /dashboard. Produces a separate
+        // chunk so visitors to other pages never download this code.
+        // The manifest key becomes "src/widget.tsx".
+        widget: resolve(__dirname, 'src/widget.tsx'),
+      },
+    },
   },
 })

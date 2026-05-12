@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block body %}
+<nav style="font-family: sans-serif; padding: 1rem; border-bottom: 1px solid #eee">
+    <a href="/" style="margin-right: 1rem">Home</a>
+    <a href="/about" style="margin-right: 1rem">About</a>
+    <a href="/dashboard">Dashboard</a>
+</nav>
+
+<main style="font-family: sans-serif; padding: 2rem; max-width: 600px">
+    <h1>Dashboard</h1>
+    <p>This page loads a <strong>secondary JS entry point</strong> (<code>src/widget.tsx</code>)
+    that is bundled separately from the main app. Visitors to other pages never
+    download this chunk.</p>
+    <div id="widget-root"></div>
+</main>
+{% endblock %}
+
+{# Override the default scripts block to load the widget chunk instead of
+   the main app bundle. The widget_entry is resolved at startup via
+   config.entry_assets_for("index.html", "src/widget.tsx") — in dev it points
+   at the source file; in production it carries the content hash from the manifest. #}
+{% block scripts %}
+    <script type="module" src="{{ widget_entry.script }}"></script>
+{% endblock %}
