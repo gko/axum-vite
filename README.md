@@ -238,6 +238,26 @@ let entry = config.entry_assets();
 // entry.stylesheets  → Vec of <link href> values
 ```
 
+**Multi-entry apps (MPA)**: if your app has pages that load different JS bundles,
+use `entry_assets_for` to resolve a secondary entry by its manifest key and dev
+source path independently:
+
+```rust
+// Primary entry — uses ViteConfig::manifest_key + ViteConfig::dev_script
+let entry = config.entry_assets();
+
+// Secondary entry — manifest key and dev source path supplied explicitly.
+// In dev mode the manifest key is ignored; dev_script is served directly by Vite.
+// In production the manifest key is looked up in dist/.vite/manifest.json.
+let widget_entry = config.entry_assets_for(
+    "src/widget.tsx",  // manifest key (same as dev path when using source-file inputs)
+    "src/widget.tsx",  // dev script path
+);
+```
+
+See the [`template-askama`](examples/template-askama/) example for a working
+MPA setup with a `/dashboard` page that loads only the `widget` chunk.
+
 > [!WARNING]
 > **Do not set `server.origin`** in `vite.config`. It causes Vite to rewrite asset paths
 > in ways that break the prefix, producing 404s in dev. Use `server.hmr.host` / `server.hmr.port`
