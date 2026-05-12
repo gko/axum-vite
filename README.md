@@ -68,8 +68,8 @@ Then open <http://localhost:3000>. The `/about` route is fully server-rendered w
 
 ```toml
 [dependencies]
-axum-vite = "0.1.0"
-include_dir = "0.7"  # required by embedded_dir! in release builds
+axum-vite = "0.3.0"
+include_dir = "0.7"  # required — see Known Limitations
 ```
 
 ### Wire up the router
