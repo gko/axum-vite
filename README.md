@@ -225,13 +225,12 @@ Set `VITE_FRAMEWORK=react` (or `vue` / `svelte`) so the correct HMR preamble is 
 
 **Production `<script>` and `<link>` paths**: Vite content-hashes JS/CSS filenames in
 production (`assets/main-A1b2C3.js`). The correct paths come from `dist/.vite/manifest.json`.
-Call `config.entry_assets("index.html")` once at startup — it reads the embedded manifest in
+Call `config.entry_assets()` once at startup — it reads the embedded manifest in
 release builds and falls back to source paths in dev:
 
 ```rust
 let config = ViteConfig {
     framework: Framework::React,
-    // dev_script defaults to "src/main.tsx"; override if your entry differs
     ..ViteConfig::from_env(embedded_dir!("$CARGO_MANIFEST_DIR/frontend/dist"))
 };
 // Resolves hashed paths from manifest in release; dev_script in dev.
