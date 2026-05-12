@@ -1508,8 +1508,7 @@ mod tests {
                 "file": "assets/templates/components/editor-oW_rDizN.js"
             }
         }"#;
-        let entry =
-            parse_manifest_for_test(json, "/static", "templates/components/editor.html");
+        let entry = parse_manifest_for_test(json, "/static", "templates/components/editor.html");
         assert_eq!(
             entry.script,
             "/static/assets/templates/components/editor-oW_rDizN.js"
