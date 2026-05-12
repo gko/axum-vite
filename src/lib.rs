@@ -1471,8 +1471,7 @@ mod tests {
             ..Default::default()
         };
         let via_shortcut = config.entry_assets();
-        let via_explicit =
-            config.entry_assets_for(&config.manifest_key.clone(), &config.dev_script.clone());
+        let via_explicit = config.entry_assets_for(&config.manifest_key, &config.dev_script);
         assert_eq!(via_shortcut.script, via_explicit.script);
         assert_eq!(via_shortcut.stylesheets, via_explicit.stylesheets);
     }
