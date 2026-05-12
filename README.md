@@ -281,3 +281,17 @@ The framework-specific preamble code is **hardcoded** in this crate and may
 lag behind framework plugin releases. If HMR stops working after a plugin
 upgrade (browser console shows "can't detect preamble"), check the plugin's
 source for the expected preamble and open an issue or PR.
+
+### `include_dir` must be a direct dependency
+
+The `embedded_dir!` macro expands to an `include_dir::include_dir!` call inside
+your crate. Rust proc-macros resolve against the *calling* crate's dependency
+graph, not the library's. If `include_dir` is only a transitive dependency (pulled
+in by `axum-vite` alone), the proc-macro won't be in scope and you'll get a compile
+error. Always add it explicitly:
+
+```toml
+[dependencies]
+axum-vite = "0.3.0"
+include_dir = "0.7"
+```
