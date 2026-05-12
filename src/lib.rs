@@ -283,7 +283,7 @@ impl ViteConfig {
     /// In dev mode `dev_script` is prepended with [`ViteConfig::prefix`] and
     /// returned directly — the manifest key is ignored. In production the
     /// manifest key is looked up in `dist/.vite/manifest.json`.
-    #[allow(unused)]
+    #[cfg_attr(debug_assertions, allow(unused))]
     pub fn entry_assets_for(&self, manifest_key: &str, dev_script: &str) -> EntryAssets {
         let base = self.prefix.trim_end_matches('/');
 
