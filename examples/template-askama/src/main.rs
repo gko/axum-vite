@@ -124,6 +124,11 @@ async fn main() {
             "$CARGO_MANIFEST_DIR/frontend/dist"
         ))
     };
+
+    // Optional: automatically start the Vite dev server (dev mode only).
+    // The handle must be kept alive — dropping it kills the child process.
+    let _dev_server = config.maybe_spawn_dev_server();
+
     let entry = config.entry_assets();
     // Secondary entry: loaded only on /dashboard. In dev, Vite serves
     // src/widget.tsx directly. In production, the manifest key "src/widget.tsx"

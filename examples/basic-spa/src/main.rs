@@ -26,8 +26,7 @@
 //! Open http://localhost:3000
 
 use axum::Router;
-#[allow(unused_imports)]
-use axum_vite::{ViteConfig, spa_router, spawn_dev_server};
+use axum_vite::{ViteConfig, spa_router};
 use tokio::net::TcpListener;
 
 #[tokio::main]
@@ -42,20 +41,7 @@ async fn main() {
 
     // Optional: automatically start the Vite dev server (dev mode only).
     // The handle must be kept alive — dropping it kills the child process.
-    #[cfg(debug_assertions)]
-    let _dev_server = config
-        .auto_start
-        .then(|| match spawn_dev_server(&config) {
-            Ok(handle) => {
-                log::info!("Vite dev server spawned");
-                Some(handle)
-            }
-            Err(e) => {
-                log::warn!("Failed to spawn Vite dev server: {}", e);
-                None
-            }
-        })
-        .flatten();
+    let _dev_server = config.maybe_spawn_dev_server();
 
     let app = Router::new()
         // Your API routes go here — they take priority over the SPA catch-all.
