@@ -43,8 +43,9 @@ Then open <http://localhost:3000>.
 > [!NOTE]
 > **Why two terminals?** Running Vite separately gives you independent logs and lets you
 > restart either server without affecting the other. If you prefer a single command, set
-> `VITE_AUTO_START=true` — see the [Configuration](#configuration) table and the
-> `auto_start` field in `ViteConfig`.
+> `VITE_AUTO_START=true` and `VITE_ROOT=examples/basic-spa/frontend`, then call
+> `config.maybe_spawn_dev_server()` in `main` — see the [Configuration](#configuration)
+> table and [Auto-Spawn](#auto-spawn) below.
 
 ### Template-based application (Askama)
 
@@ -84,11 +85,9 @@ async fn main() {
     // and returns None in debug builds — no #[cfg] boilerplate needed.
     let config = ViteConfig::from_env(axum_vite::embedded_dir!("$CARGO_MANIFEST_DIR/dist"));
 
-    // (Optional) Auto-start the Vite dev server.
-    // Keep the handle alive — dropping it immediately kills the child process.
-    #[cfg(debug_assertions)]
-    let _dev_server = config.auto_start
-        .then(|| axum_vite::spawn_dev_server(&config).expect("Failed to start Vite"));
+    // (Optional) Auto-start the Vite dev server — no-op in release builds.
+    // Keep the handle alive — dropping it kills the child process.
+    let _dev_server = config.maybe_spawn_dev_server();
 
     let app = Router::new()
         // Your API routes go here — they take priority over the SPA catch-all.
@@ -132,6 +131,31 @@ let config = ViteConfig {
     ..ViteConfig::default()
 };
 ```
+
+## Auto-Spawn
+
+`maybe_spawn_dev_server()` is the recommended way to start Vite automatically. It encapsulates
+the `#[cfg(debug_assertions)]` guard, the `auto_start` flag check, and error logging — call it
+once and keep the handle alive:
+
+```rust
+let config = ViteConfig {
+    frontend_root: Some(PathBuf::from("frontend")),
+    auto_start: true,
+    ..ViteConfig::default()
+};
+// No-op in release builds. In dev: spawns Vite if auto_start is true.
+let _dev_server = config.maybe_spawn_dev_server();
+```
+
+Or via environment variables:
+
+```sh
+VITE_AUTO_START=1 VITE_ROOT=examples/basic-spa/frontend cargo run -p basic-spa
+```
+
+The lower-level `spawn_dev_server(&config)` free function is still available if you need
+the `Result` directly (e.g. to hard-fail on spawn errors).
 
 ## Logging
 

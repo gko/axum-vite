@@ -428,6 +428,41 @@ pub fn spawn_dev_server(config: &ViteConfig) -> std::io::Result<DevServerHandle>
     }
 }
 
+impl ViteConfig {
+    /// Spawns the Vite dev server when [`auto_start`](Self::auto_start) is `true`.
+    ///
+    /// This is the ergonomic alternative to calling [`spawn_dev_server`] directly.
+    /// It handles the `#[cfg(debug_assertions)]` guard, the `auto_start` check, and
+    /// error logging internally — no boilerplate needed at the call site:
+    ///
+    /// ```rust,no_run
+    /// use axum_vite::ViteConfig;
+    ///
+    /// let config = ViteConfig::from_env(None);
+    /// // Keep the handle alive — dropping it kills the child process.
+    /// let _dev_server = config.maybe_spawn_dev_server();
+    /// ```
+    ///
+    /// Returns `None` in **release builds** unconditionally. In debug builds, returns
+    /// `None` when `auto_start` is `false`, when `frontend_root` is not set, or when
+    /// spawning fails (a warning is logged in that case).
+    pub fn maybe_spawn_dev_server(&self) -> Option<DevServerHandle> {
+        #[cfg(debug_assertions)]
+        if self.auto_start {
+            match spawn_dev_server(self) {
+                Ok(handle) => {
+                    info!("[axum-vite] Vite dev server spawned");
+                    return Some(handle);
+                }
+                Err(e) => {
+                    warn!("[axum-vite] failed to spawn Vite dev server: {e}");
+                }
+            }
+        }
+        None
+    }
+}
+
 pub fn router<S>(config: ViteConfig) -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
@@ -1121,6 +1156,43 @@ mod tests {
         let config = ViteConfig::default(); // frontend_root: None
         let err = spawn_dev_server(&config).expect_err("expected error when root is None");
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+    }
+
+    // -----------------------------------------------------------------------
+    // maybe_spawn_dev_server
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn maybe_spawn_dev_server_returns_none_when_auto_start_false() {
+        // auto_start defaults to false → always None, regardless of root
+        let config = ViteConfig {
+            frontend_root: Some(std::path::PathBuf::from(".")),
+            ..Default::default()
+        };
+        assert!(config.maybe_spawn_dev_server().is_none());
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn maybe_spawn_dev_server_returns_none_without_frontend_root() {
+        // auto_start true but no root → spawn_dev_server errors → None
+        let config = ViteConfig {
+            auto_start: true,
+            ..Default::default() // frontend_root: None
+        };
+        assert!(config.maybe_spawn_dev_server().is_none());
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn maybe_spawn_dev_server_always_none_in_release() {
+        // Even with auto_start + root set, release builds must be a no-op.
+        let config = ViteConfig {
+            auto_start: true,
+            frontend_root: Some(std::path::PathBuf::from(".")),
+            ..Default::default()
+        };
+        assert!(config.maybe_spawn_dev_server().is_none());
     }
 
     // -----------------------------------------------------------------------
