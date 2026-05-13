@@ -1772,7 +1772,7 @@ mod tests {
     #[cfg(not(debug_assertions))]
     #[test]
     fn serve_embedded_file_returns_etag_header() {
-        use include_dir::{Dir, File, DirEntry};
+        use include_dir::{Dir, DirEntry, File};
         // include_dir doesn't expose a constructor for tests; use the real
         // serve_embedded_file via a static fixture declared inline.
         static BYTES: &[u8] = b"console.log('hi')";
