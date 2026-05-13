@@ -51,7 +51,7 @@ Then open <http://localhost:3000>.
 
 ### Template-based application (Askama)
 
-The [`template-askama`](examples/template-askama/) example shows Option B: Askama owns `index.html`, axum-vite serves assets and provides the HMR preamble. It also includes a manifest reader that resolves production asset paths at startup.
+The [`template-askama`](examples/template-askama/) example shows Option B: [Askama](https://askama.rs/) owns `index.html`, axum-vite serves assets and provides the HMR preamble. It also includes a manifest reader that resolves production asset paths at startup.
 
 In order to run:
 ```sh
