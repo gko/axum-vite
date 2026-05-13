@@ -1,6 +1,6 @@
 [package]
 name = "axum-vite"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 description = "Seamless Axum and Vite integration: proxies to Vite in development and embeds the frontend directly into the Rust binary for production."
 repository = "https://github.com/gko/axum-vite"

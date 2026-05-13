@@ -69,7 +69,7 @@ Then open <http://localhost:3000>. The `/about` route is fully server-rendered w
 
 ```toml
 [dependencies]
-axum-vite = "0.3.0"
+axum-vite = "0.3.2"
 include_dir = "0.7"  # required — see Known Limitations
 ```
 
