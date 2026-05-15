@@ -49,6 +49,13 @@ Then open <http://localhost:3000>.
 > `config.maybe_spawn_dev_server()` in `main` — see the [Configuration](#configuration)
 > table and [Auto-Spawn](#auto-spawn) below.
 
+> [!TIP]
+> **Auto-restart on Rust changes**: install [`cargo-watch`](https://crates.io/crates/cargo-watch) and replace `cargo run` with:
+> ```sh
+> cargo watch -x 'run -p basic-spa'
+> ```
+> Vite's HMR handles frontend changes instantly — `cargo-watch` covers the Rust side. To automate the production frontend build, see [Automating the frontend build](#automating-the-frontend-build).
+
 ### Template-based applications
 
 You can use a server-side template engine to own the `index.html` and only use `axum-vite` for assets and HMR.
