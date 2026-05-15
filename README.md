@@ -49,9 +49,12 @@ Then open <http://localhost:3000>.
 > `config.maybe_spawn_dev_server()` in `main` — see the [Configuration](#configuration)
 > table and [Auto-Spawn](#auto-spawn) below.
 
-### Template-based application (Askama)
+### Template-based applications
 
-The [`template-askama`](examples/template-askama/) example shows Option B: [Askama](https://askama.rs/) owns `index.html`, axum-vite serves assets and provides the HMR preamble. It also includes a manifest reader that resolves production asset paths at startup.
+You can use a server-side template engine to own the `index.html` and only use `axum-vite` for assets and HMR.
+
+#### Askama
+The [`template-askama`](examples/template-askama/) example shows how to integrate [Askama](https://askama.rs/). It includes a manifest reader that resolves production asset paths at startup and demonstrates a multi-entry (MPA) setup with a `/dashboard` page.
 
 In order to run:
 ```sh
@@ -63,7 +66,21 @@ npm install && npm run dev
 cargo run -p template-askama
 ```
 
-Then open <http://localhost:3000>. The `/about` route is fully server-rendered with no JS.
+#### Sailfish
+The [`template-sailfish`](examples/template-sailfish/) example demonstrates the same pattern using [Sailfish](https://github.com/rust-sailfish/sailfish), a fast and simple template engine. This example is configured to autostart `vite` dev server.
+
+In order to run, install frontend dependencies:
+```sh
+cd examples/template-sailfish/frontend
+npm install
+```
+
+and then start the backend:
+```sh
+cargo run -p template-sailfish
+```
+
+Then open <http://localhost:3000>.
 
 ### Embedding into your own project
 
