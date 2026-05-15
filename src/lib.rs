@@ -455,7 +455,11 @@ impl ViteConfig {
                     return Some(handle);
                 }
                 Err(e) => {
-                    warn!("[axum-vite] failed to spawn Vite dev server: {e}");
+                    if log::log_enabled!(log::Level::Warn) {
+                        warn!("[axum-vite] failed to spawn Vite dev server: {e}");
+                    } else {
+                        eprintln!("[axum-vite] failed to spawn Vite dev server: {e}");
+                    }
                 }
             }
         }
