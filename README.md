@@ -88,7 +88,7 @@ Then open <http://localhost:3000>.
 
 ```toml
 [dependencies]
-axum-vite = "0.3.2"
+axum-vite = "0.3.3"
 include_dir = "0.7"  # required — see Known Limitations
 ```
 
@@ -356,6 +356,6 @@ error. Always add it explicitly:
 
 ```toml
 [dependencies]
-axum-vite = "0.3.0"
+axum-vite = "0.3.3"
 include_dir = "0.7"
 ```
