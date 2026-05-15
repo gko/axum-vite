@@ -14,12 +14,13 @@ categories = [
 ]
 exclude = [
     "examples/basic-spa/*",
-    "examples/template-askama/*"
+    "examples/template-askama/*",
+    "examples/template-sailfish/*"
 ]
 
 [workspace]
 members = [
-    "examples/basic-spa", "examples/template-askama",
+    "examples/basic-spa", "examples/template-askama", "examples/template-sailfish"
 ]
 
 [dependencies]

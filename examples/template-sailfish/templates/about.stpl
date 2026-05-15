@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>*, *::before, *::after { box-sizing: border-box; } body { margin: 0; font-family: system-ui, sans-serif; }</style>
+    <title><%= title %> — Axum + Vite</title>
+    <% for href in entry.stylesheets { %>
+        <link rel="stylesheet" href="<%= href %>" />
+    <% } %>
+    <%- hmr_scripts %>
+  </head>
+  <body>
+    <nav style="font-family: sans-serif; padding: 1rem; border-bottom: 1px solid #eee">
+        <a href="/" style="margin-right: 1rem">Home</a>
+        <a href="/about">About</a>
+    </nav>
+    <main style="font-family: sans-serif; padding: 2rem; max-width: 600px">
+        <h1>About</h1>
+        <p>This page is fully server-rendered by Sailfish. No React here.</p>
+        <p>The JS entry point is suppressed by passing an empty script URL.</p>
+    </main>
+    <% if let Some(url) = script_url { %>
+        <script type="module" src="<%= url %>"></script>
+    <% } %>
+  </body>
+</html>
