@@ -6,7 +6,7 @@ description = "Seamless Axum and Vite integration: proxies to Vite in developmen
 repository = "https://github.com/gko/axum-vite"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-keywords = ["axum", "vite", "embedded", "spa", "hmr"]
+keywords = ["axum", "vite", "vitejs", "hmr", "embedded"]
 categories = [
     "web-programming",
     "web-programming::http-server",

@@ -1,26 +1,33 @@
 # axum-vite
 
-[![crates.io](https://img.shields.io/crates/v/axum-vite.svg?color=blue)](https://crates.io/crates/axum-vite) ![tests](https://github.com/gko/axum-vite/actions/workflows/test.yml/badge.svg) ![clippy](https://github.com/gko/axum-vite/actions/workflows/clippy.yml/badge.svg)
+[![crates.io](https://img.shields.io/crates/v/axum-vite.svg?color=blue)](https://crates.io/crates/axum-vite) [![docs.rs](https://img.shields.io/docsrs/axum-vite?color=blue)](https://docs.rs/axum-vite) ![tests](https://github.com/gko/axum-vite/actions/workflows/test.yml/badge.svg) ![clippy](https://github.com/gko/axum-vite/actions/workflows/clippy.yml/badge.svg)
 
-`axum-vite` is a utility crate that simplifies the integration between an [Axum](https://github.com/tokio-rs/axum) backend and a [Vite](https://vite.dev/) frontend.
+**Seamless Vite + Axum integration** — Get full Hot Module Replacement (HMR) during development and embed your entire frontend into a **single Rust binary** for production.
 
-It enables a **"Single Binary"** developer experience: during development, your Axum server acts as a reverse proxy to the Vite dev server, providing seamless Hot Module Replacement (HMR). In production, it serves pre-built assets embedded directly into the Rust binary.
+`axum-vite` makes your Axum server the single entry point for both your API and frontend. In development it proxies to Vite. In production it serves pre-built assets embedded directly in the binary using `include_dir`.
 
 ## Why axum-vite?
 
-In many Rust + Frontend workflows, developers face a choice between two frictions:
-1. **The Two-Server Problem**: Running the backend and frontend separately, dealing with CORS, and managing two different ports in the browser.
-2. **The Restart Problem**: Using `cargo-watch` to rebuild the binary on every change, which destroys the fast, partial hot-reload experience that Vite provides.
+Most Rust + frontend projects suffer from one of two problems:
 
-`axum-vite` solves this by making the Axum server the single entry point. You get the convenience of one URL (`localhost:3000`) and the speed of Vite's HMR, without the overhead of manual proxy configuration.
+- **Two-server friction**: Running Vite and Axum separately, dealing with CORS, and managing two ports.
+- **Lost HMR**: Using `cargo-watch` + full rebuilds on every change, destroying Vite’s fast partial reload experience.
 
-## Features
+`axum-vite` solves both by making Axum the single entry point:
 
-- **Transparent Proxying**: Automatically forwards requests to the Vite dev server in debug mode.
-- **Header Preservation**: Forwards crucial headers (like `Accept`) so Vite can correctly serve CSS as stylesheets instead of JS modules.
-- **Embedded Assets**: Uses `include_dir` to serve built assets from the binary in release mode.
-- **Auto-Spawn**: Optionally starts the Vite dev server as a child process on startup.
-- **Env-Driven Config**: Configure ports, roots, and commands via environment variables.
+| Mode          | What you get                              | Benefit                          |
+|---------------|-------------------------------------------|----------------------------------|
+| Development   | Transparent proxy to Vite + HMR injection | Full Vite developer experience   |
+| Production    | Assets embedded in the binary             | Single deployable executable     |
+
+## Key Features
+
+- Full HMR support in development (including React Refresh preamble)
+- Single-binary deployment with embedded frontend assets
+- Works with both SPAs (`spa_router`) and server-rendered templates (Askama, Sailfish, etc.)
+- Smart production caching (ETags, proper `Cache-Control`, 304 responses)
+- `entry_assets()` helper for easy `<script>` / `<link>` resolution from Vite’s manifest
+- Multi-entry / MPA support via `entry_assets_for()`
 
 ## Quick Start
 
@@ -89,14 +96,14 @@ cargo run -p template-sailfish
 
 Then open <http://localhost:3000>.
 
-### Embedding into your own project
+## Add to your own project
 
 ### Add the dependency
 
 ```toml
 [dependencies]
-axum-vite = "0.3.3"
-include_dir = "0.7"  # required — see Known Limitations
+axum-vite = "0.3.4"
+include_dir = "0.7"  # required — see Important Notes
 ```
 
 ### Wire up the router
@@ -338,7 +345,8 @@ MPA setup with a `/dashboard` page that loads only the `widget` chunk.
 > [!TIP]
 > **If HMR is not working**, the most likely reason is that `hmr_scripts()` is missing from the
 > template `<head>`.
-## Known Limitations
+
+## Important Notes
 
 ### HMR Preamble only applies to template-based setups
 
@@ -363,6 +371,6 @@ error. Always add it explicitly:
 
 ```toml
 [dependencies]
-axum-vite = "0.3.3"
+axum-vite = "0.3.4"
 include_dir = "0.7"
 ```
